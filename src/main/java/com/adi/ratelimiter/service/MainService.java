@@ -5,6 +5,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -61,6 +62,10 @@ public class MainService {
 
         if (count == null) {
             return false;
+        }
+
+        if (count == 1) {
+            redisTemplate.expire(ipAddress, Duration.ofSeconds(60));
         }
 
         return count <= MAX_REQUESTS;
