@@ -5,37 +5,49 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 class RateLimitEntry {
     long windowStart;
-    int requestCount = 1;
+    int requestCount;
+
+    public RateLimitEntry(int requestCount, long windowStart) {
+        this.requestCount = requestCount;
+        this.windowStart = windowStart;
+    }
 }
 
 @Service
 public class MainService {
     private final Map<String, RateLimitEntry> rates = new ConcurrentHashMap<>();
+    private static final int MAX_REQUESTS = 100;
+    private static final int WINDOW_SIZE_MS = 60_000;
 
     public boolean isAllowed(String ipAddress) {
-        RateLimitEntry l = rates.get(ipAddress);
+//        RateLimitEntry l = rates.get(ipAddress);
+        AtomicBoolean allowed = new AtomicBoolean(true);
+        long currTime = System.currentTimeMillis();
 
-        if (l != null) {
-            if (l.requestCount == 100) {
-                if (new Date().getTime() - l.windowStart < 60_000) {
-                    return false;
+        rates.compute(ipAddress, (key, currentEntry) -> {
+            if (currentEntry == null) {
+                return new RateLimitEntry(1, currTime);
+            }
+
+            if (currentEntry.requestCount == MAX_REQUESTS) {
+                if (currTime - currentEntry.windowStart < WINDOW_SIZE_MS) {
+                    allowed.set(false);
+                    return currentEntry;
                 }
 
-                l.requestCount = 1;
-                l.windowStart = new Date().getTime();
+                currentEntry.windowStart = currTime;
+                currentEntry.requestCount = 1;
             } else {
-                l.requestCount++;
+                currentEntry.requestCount++;
             }
-        }
 
-        if (l == null) {
-            rates.put(ipAddress, new RateLimitEntry());
-            rates.get(ipAddress).windowStart = new Date().getTime();
-        }
+            return currentEntry;
+        });
 
-        return true;
+        return allowed.get();
     }
 }
