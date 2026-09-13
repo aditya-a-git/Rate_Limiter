@@ -29,23 +29,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        String ipAddress = request.getHeader("X-FORWARDED-FOR");
-        List<Long> l = mainService.rates.get(ipAddress);
+        String ipAddress = request.getRemoteAddr();
 
-        if (l != null && l.size() == 100) {
-            if (new Date().getTime() - l.getFirst() < 60) {
-                response.sendError(HttpStatus.TOO_MANY_REQUESTS.value());
-                return;
-            }
-
-            l.clear();
-        }
-
-        if (l == null) {
-            mainService.rates.put(ipAddress, new ArrayList<>());
-            mainService.rates.get(ipAddress).add(new Date().getTime());
-        } else {
-            l.add(new Date().getTime());
+        if (!mainService.isAllowed(ipAddress)) {
+            response.sendError(HttpStatus.TOO_MANY_REQUESTS.value());
+            return;
         }
 
         filterChain.doFilter(request, response);
