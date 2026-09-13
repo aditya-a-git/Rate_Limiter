@@ -1,9 +1,11 @@
 package com.adi.ratelimiter.service;
 
-import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -19,35 +21,48 @@ class RateLimitEntry {
 
 @Service
 public class MainService {
-    private final Map<String, RateLimitEntry> rates = new ConcurrentHashMap<>();
+
+    final StringRedisTemplate redisTemplate;
+    //    private final Map<String, RateLimitEntry> rates = new ConcurrentHashMap<>();
     private static final int MAX_REQUESTS = 100;
-    private static final int WINDOW_SIZE_MS = 60_000;
+//    private static final int WINDOW_SIZE_MS = 60_000;
+
+    public MainService(StringRedisTemplate redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
 
     public boolean isAllowed(String ipAddress) {
-//        RateLimitEntry l = rates.get(ipAddress);
-        AtomicBoolean allowed = new AtomicBoolean(true);
-        long currTime = System.currentTimeMillis();
+//        long currTime = System.currentTimeMillis();
+//        AtomicBoolean allowed = new AtomicBoolean(true);
+//
+//        rates.compute(ipAddress, (key, currentEntry) -> {
+//            if (currentEntry == null) {
+//                return new RateLimitEntry(1, currTime);
+//            }
+//
+//            if (currentEntry.requestCount == MAX_REQUESTS) {
+//                if (currTime - currentEntry.windowStart < WINDOW_SIZE_MS) {
+//                    allowed.set(false);
+//                    return currentEntry;
+//                }
+//
+//                currentEntry.windowStart = currTime;
+//                currentEntry.requestCount = 1;
+//            } else {
+//                currentEntry.requestCount++;
+//            }
+//
+//            return currentEntry;
+//        });
 
-        rates.compute(ipAddress, (key, currentEntry) -> {
-            if (currentEntry == null) {
-                return new RateLimitEntry(1, currTime);
-            }
+//        return allowed.get();
 
-            if (currentEntry.requestCount == MAX_REQUESTS) {
-                if (currTime - currentEntry.windowStart < WINDOW_SIZE_MS) {
-                    allowed.set(false);
-                    return currentEntry;
-                }
+        Long count = redisTemplate.opsForValue().increment(ipAddress);
 
-                currentEntry.windowStart = currTime;
-                currentEntry.requestCount = 1;
-            } else {
-                currentEntry.requestCount++;
-            }
+        if (count == null) {
+            return false;
+        }
 
-            return currentEntry;
-        });
-
-        return allowed.get();
+        return count <= MAX_REQUESTS;
     }
 }
