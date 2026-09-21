@@ -9,8 +9,8 @@ import java.util.List;
 @Service
 public class MainService {
 
-    final StringRedisTemplate redisTemplate;
-    final DefaultRedisScript<Long> rateLimitScript;
+    private final StringRedisTemplate redisTemplate;
+    private final DefaultRedisScript<Long> rateLimitScript;
     private static final int MAX_REQUESTS = 100;
 
     public MainService(StringRedisTemplate redisTemplate, DefaultRedisScript<Long> rateLimitScript) {
@@ -20,7 +20,15 @@ public class MainService {
 
     public boolean isAllowed(String ipAddress) {
         String key = "rate_limit:" + ipAddress;
-        Long count = redisTemplate.execute(rateLimitScript, List.of(key));
+        long count = redisTemplate.execute(rateLimitScript, List.of(key));
+        System.out.println(
+                "Server: " + System.getProperty("server.port")
+                        + " | IP: " + ipAddress
+                        + " | Count: " + count
+                        + " | Allowed: " + (count <= MAX_REQUESTS)
+        );
         return count <= MAX_REQUESTS;
     }
 }
+
+
