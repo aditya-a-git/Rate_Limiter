@@ -13,7 +13,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 @Component
-@WebFilter
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private final MainService mainService;
