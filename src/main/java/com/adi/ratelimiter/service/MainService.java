@@ -25,7 +25,7 @@ public class MainService {
 
         response.addHeader("X-RateLimit-Limit", String.valueOf(MAX_REQUESTS));
         response.addHeader("X-RateLimit-Remaining", String.valueOf(MAX_REQUESTS - redisResponse.getFirst()));
-        response.addHeader("X-RateLimit-Reset", String.valueOf(redisResponse.getLast()));
+        response.addHeader("X-RateLimit-Reset-After", String.valueOf(redisResponse.getLast()));
 
         return redisResponse.getFirst() <= MAX_REQUESTS;
     }
