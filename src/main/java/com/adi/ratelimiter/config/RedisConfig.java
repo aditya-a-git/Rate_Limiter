@@ -9,9 +9,10 @@ import java.util.List;
 @Configuration
 public class RedisConfig {
     @Bean
-    public DefaultRedisScript<List<Long>> rateLimitScript() {
-        DefaultRedisScript<List<Long>> script = new DefaultRedisScript<>();
+    public DefaultRedisScript<List> rateLimitScript() {
+        DefaultRedisScript<List> script = new DefaultRedisScript<>();
         script.setLocation(new ClassPathResource("script.lua"));
+        script.setResultType(List.class);
         return script;
     }
 }
