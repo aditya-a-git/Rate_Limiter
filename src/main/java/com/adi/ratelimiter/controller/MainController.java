@@ -10,4 +10,9 @@ public class MainController {
     public String greet() {
         return "Hello Bud";
     }
+
+    @GetMapping("/server")
+    public String getServer() {
+        return System.getenv("SERVER_ID");
+    }
 }
