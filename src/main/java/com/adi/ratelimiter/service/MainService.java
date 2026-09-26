@@ -18,14 +18,12 @@ public class MainService {
     private final DefaultRedisScript<List> rateLimitScript;
     private static final int MAX_REQUESTS = 100;
 
+    private final MeterRegistry meterRegistry;
     private final Counter requestsTotal;
     private final Counter allowedTotal;
     private final Counter rejectedTotal;
     private final Counter redisErrors;
-    private final Timer checkDuration;
     private final Timer redisLatency;
-    private final Gauge activeRequests;
-    private final AtomicInteger actReq;
 
     public MainService(StringRedisTemplate redisTemplate,
                        DefaultRedisScript<List> rateLimitScript,
@@ -33,20 +31,28 @@ public class MainService {
         this.redisTemplate = redisTemplate;
         this.rateLimitScript = rateLimitScript;
 
+        this.meterRegistry = meterRegistry;
         this.requestsTotal = Counter.builder("rate_limit_requests_total").register(meterRegistry);
         this.allowedTotal = Counter.builder("rate_limit_allowed_total").register(meterRegistry);
         this.rejectedTotal = Counter.builder("rate_limit_rejected_total").register(meterRegistry);
         this.redisErrors = Counter.builder("rate_limit_redis_errors").register(meterRegistry);
-        this.checkDuration = Timer.builder("rate_limit_check_duration").register(meterRegistry);
         this.redisLatency = Timer.builder("rate_limit_redis_latency").register(meterRegistry);
-
-        this.actReq = new AtomicInteger();
-        this.activeRequests = Gauge.builder("rate_limit_active_requests", actReq, AtomicInteger::get).register(meterRegistry);
     }
 
     public boolean isAllowed(String ipAddress, HttpServletResponse response) {
         String key = "rate_limit:" + ipAddress;
-        List<Long> redisResponse = (List<Long>) redisTemplate.execute(rateLimitScript, List.of(key));
+        List<Long> redisResponse;
+
+        Timer.Sample redisSample = Timer.start(meterRegistry);
+
+        try {
+            redisResponse = (List<Long>) redisTemplate.execute(rateLimitScript, List.of(key));
+        } catch (RuntimeException e) {
+            redisErrors.increment();
+            throw e;
+        } finally {
+            redisSample.stop(redisLatency);
+        }
 
         response.addHeader("RateLimit-Limit", String.valueOf(MAX_REQUESTS));
         response.addHeader("RateLimit-Remaining", String.valueOf(MAX_REQUESTS - redisResponse.getFirst()));
