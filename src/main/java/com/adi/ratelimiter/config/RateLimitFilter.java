@@ -22,15 +22,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final MainService mainService;
 
     private final MeterRegistry meterRegistry;
-    private final Timer checkDuration;
+    private final Timer filterDuration;
     private final AtomicInteger actReq = new AtomicInteger();
 
     public RateLimitFilter(MainService mainService, MeterRegistry meterRegistry) {
         this.mainService = mainService;
 
         this.meterRegistry = meterRegistry;
-        this.checkDuration = Timer.builder("rate_limit_check_duration").register(meterRegistry);
-        Gauge.builder("rate-limit-active-requests", actReq, AtomicInteger::get).register(meterRegistry);
+        this.filterDuration = Timer.builder("rate_limit_filter_duration").register(meterRegistry);
+        Gauge.builder("rate_limit_active_requests", actReq, AtomicInteger::get).register(meterRegistry);
     }
 
     @Override
@@ -48,10 +48,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
             filterChain.doFilter(request, response);
         } finally {
-            checkSample.stop(checkDuration);
+            checkSample.stop(filterDuration);
             actReq.decrementAndGet();
         }
+    }
 
-
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        return request.getRequestURI().startsWith("/actuator/");
     }
 }
