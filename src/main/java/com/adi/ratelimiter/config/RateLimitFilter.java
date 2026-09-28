@@ -35,13 +35,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        String ipAddress = request.getRemoteAddr();
 
         actReq.incrementAndGet();
         Timer.Sample checkSample = Timer.start(meterRegistry);
 
         try {
-            if (!mainService.isAllowed(ipAddress, response)) {
+            if (!mainService.isAllowed(request, response)) {
                 response.sendError(HttpStatus.TOO_MANY_REQUESTS.value());
                 return;
             }

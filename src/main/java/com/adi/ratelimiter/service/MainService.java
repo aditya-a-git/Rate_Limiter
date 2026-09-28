@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -39,8 +40,14 @@ public class MainService {
         this.redisLatency = Timer.builder("rate_limit_redis_latency").register(meterRegistry);
     }
 
-    public boolean isAllowed(String ipAddress, HttpServletResponse response) {
-        String key = "rate_limit:" + ipAddress;
+    public boolean isAllowed(HttpServletRequest request, HttpServletResponse response) {
+        String api = request.getHeader("X-API-Key");
+        String key = "rate-limit:api:" + api;
+
+        if (api == null) {
+            key = "rate-limit:ip:" + request.getRemoteAddr();
+        }
+
         List<Long> redisResponse;
 
         Timer.Sample redisSample = Timer.start(meterRegistry);
