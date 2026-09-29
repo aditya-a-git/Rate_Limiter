@@ -1,5 +1,6 @@
 package com.adi.ratelimiter.config;
 
+import com.adi.ratelimiter.RateLimiterUnavailableException;
 import com.adi.ratelimiter.service.MainService;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -46,6 +47,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
             }
 
             filterChain.doFilter(request, response);
+        } catch (RateLimiterUnavailableException e) {
+            response.sendError(HttpStatus.SERVICE_UNAVAILABLE.value());
         } finally {
             checkSample.stop(filterDuration);
             actReq.decrementAndGet();

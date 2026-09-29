@@ -1,5 +1,6 @@
 package com.adi.ratelimiter.service;
 
+import com.adi.ratelimiter.RateLimiterUnavailableException;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -56,7 +57,7 @@ public class MainService {
             redisResponse = (List<Long>) redisTemplate.execute(rateLimitScript, List.of(key));
         } catch (RuntimeException e) {
             redisErrors.increment();
-            throw e;
+            throw new RateLimiterUnavailableException(e);
         } finally {
             redisSample.stop(redisLatency);
         }
